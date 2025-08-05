@@ -2,8 +2,10 @@ Imports System
 Imports System.CodeDom
 Imports System.Drawing
 Imports System.IO
+Imports System.Runtime.InteropServices
 Imports System.Text
 Imports System.Threading
+Imports SPRDClientCore
 Imports SPRDClientCore.Models
 Imports SPRDClientCore.Protocol
 Imports SPRDClientCore.Protocol.Encoders
@@ -22,6 +24,7 @@ Module Program
     Private device_stage As (SprdMode As Stages, Stage As Stages)
     Private Exit_need As Boolean = False
     Private isSprd4NoFDL As Boolean = False
+    Private isSprd4NoFDLMode As Boolean = False
     Private cts As New CancellationTokenSource
     Private bar As New ConsoleProgressBar
     Private exec_addr_en As Boolean = False
@@ -42,6 +45,7 @@ Module Program
         Console.WriteLine("Copyright Ryan Crepa - All Rights Reserved")
         Console.WriteLine("Core by YC")
         Console.WriteLine($"Core Version : {CoreVer}")
+
         Dim i As Integer = 0
         While i < args.Length
             Select Case args(i)
@@ -69,10 +73,9 @@ Module Program
                 Case "--nofdl"
 
                     Try
-                        utils.ExecuteDataAndConnect(Stages.Brom)
-                        utils.ExecuteDataAndConnect(Stages.Fdl1)
-                        DEG_LOG("Sprd4 No FDL mode enabled.")
-                        isSprd4NoFDL = True
+
+                        'DEG_LOG("Sprd4 No FDL mode e")
+                        isSprd4NoFDLMode = True
                         i += 1
                     Catch ex As Exception
                         DEG_LOG($"Can not execute Sprd4 No FDL mode, please execute FDL files : {ex.Message}")
@@ -109,6 +112,7 @@ Module Program
             AddHandler utils.Log, AddressOf LogInvoke
             AddHandler utils.UpdatePercentage, AddressOf bar.UpdateProgress
             AddHandler utils.UpdateStatus, AddressOf bar.UpdateSpeed
+            AddHandler Console.CancelKeyPress, AddressOf CancelKeyPressHandler
             Try
 
                 device_stage = utils.ConnectToDevice()
@@ -172,6 +176,18 @@ Module Program
         Dim EnterText As String
         If connected Then
             ParseArgsCommand(args)
+            If isSprd4NoFDLMode Then
+                Try
+                    utils.ExecuteDataAndConnect(Stages.Brom)
+                    utils.ExecuteDataAndConnect(Stages.Fdl1)
+                    DEG_LOG("Sprd4 No FDL mode enabled.")
+                    isSprd4NoFDL = True
+                Catch ex As Exception
+                    DEG_LOG("Can not execute device through Sprd4 No FDL mode, please execute FDL files.", "E")
+                End Try
+
+
+            End If
             If config_boot Then
                 ini = New IniFileReader("config.ini")
 st1:
@@ -220,6 +236,10 @@ st1:
         End If
 
 
+    End Sub
+    Private Sub CancelKeyPressHandler(sender As Object, e As ConsoleCancelEventArgs)
+        cts.Cancel()
+        cts = New CancellationTokenSource()
     End Sub
     Private Async Sub ParseArgsCommand(args As String())
         Dim i = 0
