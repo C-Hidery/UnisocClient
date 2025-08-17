@@ -112,6 +112,7 @@ Module Program
                     i += 1
             End Select
         End While
+        AddHandler Console.CancelKeyPress, AddressOf CancelKeyPressHandler
         If Not sprd4 Then
             Console.WriteLine($"<waiting for connection,mode:dl,{timeout_w}s>")
             Dim port
@@ -135,7 +136,7 @@ Module Program
             AddHandler utils.Log, AddressOf LogInvoke
             AddHandler utils.UpdatePercentage, AddressOf bar.UpdateProgress
             AddHandler utils.UpdateStatus, AddressOf bar.UpdateSpeed
-            AddHandler Console.CancelKeyPress, AddressOf CancelKeyPressHandler
+
             Try
 
                 device_stage = utils.ConnectToDevice()
