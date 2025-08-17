@@ -37,7 +37,7 @@ Module Program
     Private partitions As (partition As List(Of Partition), method As GetPartitionsMethod)
     Private getpart As Boolean = False
     Private ini As IniFileReader
-    Private ReadOnly commandHelp As String = $"{Environment.NewLine}Help:{Environment.NewLine}Options:{Environment.NewLine}--kick{Environment.NewLine}     Kick device into Brom mode.{Environment.NewLine}--kickto{Environment.NewLine}     Kick device to a customized mode, supported value: 1-127{Environment.NewLine}--wait{Environment.NewLine}     Set timeout value for connecting device.{Environment.NewLine}--nofdl{Environment.NewLine}     When device is in SPRD4, it may not need FDL, you can set this option to skip Brom/FDL1 stage.{Environment.NewLine}-c/--config{Environment.NewLine}     Boot device through a configuration.Please set up the config file before using.{Environment.NewLine}Commands:{Environment.NewLine}->Send flash download layer (FDL) file:{Environment.NewLine}     fdl [FILE PATH] [SEND ADDR]{Environment.NewLine}->Flash a partition:{Environment.NewLine}     flash/w [PARTITION NAME] [IMAGE FILE PATH]{Environment.NewLine}->Read a partition:{Environment.NewLine}     read/r [PARTITION NAME] <SAVE PATH> <READ SIZE(KB)> <READ OFFSET>{Environment.NewLine}->Read all partitions (except Userdata){Environment.NewLine}     read_all{Environment.NewLine}->Erase a partition:{Environment.NewLine}     erase/e [PARTITION NAME]{Environment.NewLine}->Erase all partitions{Environment.NewLine}     erase_all{Environment.NewLine}->Get partition size:{Environment.NewLine}     part_size/ps [PARTITION NAME]{Environment.NewLine}->Check a partition if exist:{Environment.NewLine}     check_part/cp [PARTITION NAME]{Environment.NewLine}->Power off device:{Environment.NewLine}     poweroff/exit{Environment.NewLine}->Reboot device (to customized mode):{Environment.NewLine}     reboot/reset <MODE>{Environment.NewLine}     Supported mode: recovery/fastboot/factory_reset{Environment.NewLine}->Repartition:{Environment.NewLine}     repartition/repart [XML file]{Environment.NewLine}->Save partition list for repartition(XML):{Environment.NewLine}     save_xml{Environment.NewLine}->Use CVE to skip FDL file verification(Brom stage only):{Environment.NewLine}     fdl_off_addr [BINARY FILE PATH] [ADDR]{Environment.NewLine}->Set active slot:{Environment.NewLine}     set_active [SLOT]{Environment.NewLine}->Set dm-verify status:{Environment.NewLine}     verify [0,1]{Environment.NewLine}->Print partition table:{Environment.NewLine}     print/p{Environment.NewLine}->Write configuration{Environment.NewLine}     config{Environment.NewLine}->Unlock Bootloader{Environment.NewLine}     unlock{Environment.NewLine}->Lock Bootloader{Environment.NewLine}     lock{Environment.NewLine}->Send a specified packet to device{Environment.NewLine}     send_pak/send [PACKETS]{Environment.NewLine}Additional Notes:{Environment.NewLine}fdl_off_addr : send a binary file to the specified memory address to bypass the signature verification by brom for splloader/fdl1.Used for CVE-2022-38694.{Environment.NewLine}unlock/lock : It is only supported on special FDL2 and requires trustos and sml partition files."
+    Private ReadOnly commandHelp As String = $"{Environment.NewLine}Help:{Environment.NewLine}Options:{Environment.NewLine}--kick{Environment.NewLine}     Kick device into Brom mode.{Environment.NewLine}--kickto{Environment.NewLine}     Kick device to a customized mode, supported value: 1-127{Environment.NewLine}--wait{Environment.NewLine}     Set timeout value for connecting device.{Environment.NewLine}--nofdl{Environment.NewLine}     When device is in SPRD4, it may not need FDL, you can set this option to skip Brom/FDL1 stage.{Environment.NewLine}-c/--config{Environment.NewLine}     Boot device through a configuration.Please set up the config file before using.{Environment.NewLine}Commands:{Environment.NewLine}->Send flash download layer (FDL) file:{Environment.NewLine}     fdl [FILE PATH] [SEND ADDR]{Environment.NewLine}->Flash a partition:{Environment.NewLine}     flash/w [PARTITION NAME] [IMAGE FILE PATH] <force>{Environment.NewLine}->Read a partition:{Environment.NewLine}     read/r [PARTITION NAME] <SAVE PATH> <READ SIZE(KB)> <READ OFFSET>{Environment.NewLine}->Read all partitions (except Userdata){Environment.NewLine}     read_all{Environment.NewLine}->Erase a partition:{Environment.NewLine}     erase/e [PARTITION NAME]{Environment.NewLine}->Erase all partitions{Environment.NewLine}     erase_all{Environment.NewLine}->Get partition size:{Environment.NewLine}     part_size/ps [PARTITION NAME]{Environment.NewLine}->Check a partition if exist:{Environment.NewLine}     check_part/cp [PARTITION NAME]{Environment.NewLine}->Power off device:{Environment.NewLine}     poweroff/exit{Environment.NewLine}->Reboot device (to customized mode):{Environment.NewLine}     reboot/reset <MODE>{Environment.NewLine}     Supported mode: recovery/fastboot/factory_reset{Environment.NewLine}->Repartition:{Environment.NewLine}     repartition/repart [XML file]{Environment.NewLine}->Save partition list for repartition(XML):{Environment.NewLine}     save_xml{Environment.NewLine}->Use CVE to skip FDL file verification(Brom stage only):{Environment.NewLine}     fdl_off_addr [BINARY FILE PATH] [ADDR]{Environment.NewLine}->Set active slot:{Environment.NewLine}     set_active [SLOT]{Environment.NewLine}->Set dm-verify status:{Environment.NewLine}     verify [0,1]{Environment.NewLine}->Print partition table:{Environment.NewLine}     print/p{Environment.NewLine}->Write configuration{Environment.NewLine}     config{Environment.NewLine}->Unlock Bootloader{Environment.NewLine}     unlock{Environment.NewLine}->Lock Bootloader{Environment.NewLine}     lock{Environment.NewLine}->Send a specified packet to device{Environment.NewLine}     send_pak/send [PACKETS]{Environment.NewLine}Additional Notes:{Environment.NewLine}fdl_off_addr : send a binary file to the specified memory address to bypass the signature verification by brom for splloader/fdl1.Used for CVE-2022-38694.{Environment.NewLine}unlock/lock : It is only supported on special FDL2 and requires trustos and sml partition files."
     Sub Main(args As String())
         If Not File.Exists("config.ini") Then
             Using File.Create("config.ini")
@@ -68,6 +68,7 @@ Module Program
                         DEG_LOG("Kick Mode needed.", "E")
                         Exit Sub
                     End If
+                    i += 2
                 Case "--wait"
                     If i + 1 < args.Length Then
                         Dim nextArg As String = args(i + 1)
@@ -295,7 +296,14 @@ st1:
                     Case "flash", "w"
                         Dim name = args(i + 1)
                         Dim image = args(i + 2)
-                        Await ExecuteCommand($"flash {name} ""{image}""")
+                        If args(i + 3) = "fdl_off_addr" Or args(i + 3) = "fdl" Or args(i + 3) = "w" Or args(i + 3) = "flash" Or args(i + 3) = "erase" Or args(i + 3) = "e" Or args(i + 3) = "verify" Or args(i + 3) = "set_active" Or args(i + 3) = "poweroff" Or args(i + 3) = "exit" Or args(i + 3) = "reset" Or args(i + 3) = "reboot" Or args(i + 3) = "ps" Or args(i + 3) = "part_size" Or args(i + 3) = "check_part" Or args(i + 3) = "cp" Or args(i + 3) = "p" Or args(i + 3) = "print" Or args(i + 3) = "config" Or args(i + 3) = "repart" Or args(i + 3) = "repartition" Or args(i + 3) = "save_xml" Or args(i) = "unlock" Or args(i) = "lock" Or args(i) = "send_pak" Or args(i) = "send" Then
+                            Await ExecuteCommand($"flash {name} ""{image}""")
+                        ElseIf args(i + 3) = "force" Then
+                            Await ExecuteCommand($"flash {name} ""{image}"" force")
+                        Else
+                            Await ExecuteCommand($"flash {name} ""{image}""")
+                        End If
+
                         i += 3
                     Case "read", "r"
                         Dim name = args(i + 1)
@@ -496,7 +504,14 @@ st1:
                         Try
                             If File.Exists(args(2)) And args.Count >= 3 Then
                                 Using fs As Stream = File.OpenRead(args(2))
-                                    Await utils.WritePartitionAsync(args(1), fs, cts.Token)
+                                    If args.Count >= 4 AndAlso args(3) = "force " Then
+                                        Dim part = utils.GetPartitionsAndStorageInfo
+                                        part.partitions.RemoveAll(Function(p) p.Name = "splloader")
+                                        Await utils.WritePartitionWithoutVerifyAsync(args(1), part.partitions, fs, cts.Token)
+                                    Else
+                                        Await utils.WritePartitionAsync(args(1), fs, cts.Token)
+                                    End If
+
                                 End Using
                             Else
                                 DEG_LOG("File does not exist.", "E")
